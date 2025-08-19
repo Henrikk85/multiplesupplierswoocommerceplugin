@@ -83,38 +83,42 @@ class MSOM_Supplier_Manager {
         global $wpdb;
         $table_name = $wpdb->prefix . 'msom_product_suppliers';
         
+        error_log('MSOM Debug: assign_product_to_suppliers called with product_id=' . $product_id . ', supplier_ids=' . print_r($supplier_ids, true));
+        
         $wpdb->delete($table_name, array('product_id' => $product_id), array('%d'));
         
         if (empty($supplier_ids)) {
+            error_log('MSOM Debug: No supplier IDs provided, returning true');
             return true;
         }
         
         $success = true;
         foreach ($supplier_ids as $supplier_id) {
-            if (empty($supplier_id)) continue;
+            if (empty($supplier_id)) {
+                error_log('MSOM Debug: Skipping empty supplier_id');
+                continue;
+            }
             
-            $existing = $wpdb->get_row($wpdb->prepare(
-                "SELECT * FROM $table_name WHERE product_id = %d AND supplier_id = %d",
-                $product_id, $supplier_id
-            ));
+            error_log('MSOM Debug: Inserting product_id=' . $product_id . ', supplier_id=' . $supplier_id);
             
-            if (!$existing) {
-                $result = $wpdb->insert(
-                    $table_name,
-                    array(
-                        'product_id' => $product_id,
-                        'supplier_id' => $supplier_id
-                    ),
-                    array('%d', '%d')
-                );
-                
-                if ($result === false) {
-                    $success = false;
-                    error_log('MSOM: Failed to assign product to supplier. Error: ' . $wpdb->last_error);
-                }
+            $result = $wpdb->insert(
+                $table_name,
+                array(
+                    'product_id' => $product_id,
+                    'supplier_id' => $supplier_id
+                ),
+                array('%d', '%d')
+            );
+            
+            if ($result === false) {
+                $success = false;
+                error_log('MSOM: Failed to assign product to supplier. Error: ' . $wpdb->last_error);
+            } else {
+                error_log('MSOM Debug: Successfully inserted assignment with ID: ' . $wpdb->insert_id);
             }
         }
         
+        error_log('MSOM Debug: assign_product_to_suppliers returning: ' . ($success ? 'true' : 'false'));
         return $success;
     }
     

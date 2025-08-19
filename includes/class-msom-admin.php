@@ -10,7 +10,11 @@ class MSOM_Admin {
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_init', array($this, 'init_settings'));
         add_action('add_meta_boxes', array($this, 'add_product_meta_boxes'));
-        add_action('save_post', array($this, 'save_product_supplier'));
+        add_action('save_post', array($this, 'save_product_supplier'), 10, 1);
+        add_action('woocommerce_process_product_meta', array($this, 'save_product_supplier'), 10, 1);
+        add_action('woocommerce_admin_process_product_object', array($this, 'save_product_supplier_wc'), 10, 1);
+        
+        error_log('MSOM Debug: Admin class constructor called, hooks registered');
     }
     
     public function add_admin_menu() {
@@ -304,25 +308,52 @@ class MSOM_Admin {
     }
     
     public function save_product_supplier($post_id) {
-        if (!isset($_POST['msom_product_supplier_nonce']) || !wp_verify_nonce($_POST['msom_product_supplier_nonce'], 'msom_save_product_supplier')) {
+        error_log('MSOM Debug: save_product_supplier called with post_id=' . $post_id);
+        error_log('MSOM Debug: Hook triggered: ' . current_action());
+        
+        if (!isset($_POST['msom_product_supplier_nonce'])) {
+            error_log('MSOM Debug: No nonce field found in POST data');
+            return;
+        }
+        
+        if (!wp_verify_nonce($_POST['msom_product_supplier_nonce'], 'msom_save_product_supplier')) {
+            error_log('MSOM Debug: Nonce verification failed');
             return;
         }
         
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+            error_log('MSOM Debug: Skipping due to autosave');
             return;
         }
         
         if (!current_user_can('edit_post', $post_id)) {
+            error_log('MSOM Debug: User cannot edit post');
             return;
         }
         
         if (get_post_type($post_id) !== 'product') {
+            error_log('MSOM Debug: Post type is not product: ' . get_post_type($post_id));
             return;
         }
         
         $supplier_manager = new MSOM_Supplier_Manager();
         $supplier_ids = isset($_POST['msom_supplier_ids']) ? array_map('intval', $_POST['msom_supplier_ids']) : array();
         
-        $supplier_manager->assign_product_to_suppliers($post_id, $supplier_ids);
+        error_log('MSOM Debug: Product ID: ' . $post_id . ', Supplier IDs: ' . print_r($supplier_ids, true));
+        
+        $result = $supplier_manager->assign_product_to_suppliers($post_id, $supplier_ids);
+        error_log('MSOM Debug: assign_product_to_suppliers result: ' . ($result ? 'true' : 'false'));
+    }
+    
+    public function save_product_supplier_wc($product) {
+        if (!$product || !is_a($product, 'WC_Product')) {
+            error_log('MSOM Debug: save_product_supplier_wc called but no valid product object');
+            return;
+        }
+        
+        $post_id = $product->get_id();
+        error_log('MSOM Debug: save_product_supplier_wc called with product ID=' . $post_id);
+        
+        $this->save_product_supplier($post_id);
     }
 }
