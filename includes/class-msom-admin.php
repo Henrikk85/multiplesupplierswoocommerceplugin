@@ -14,6 +14,8 @@ class MSOM_Admin {
         add_action('woocommerce_process_product_meta', array($this, 'save_product_supplier'), 10, 1);
         add_action('woocommerce_admin_process_product_object', array($this, 'save_product_supplier_wc'), 10, 1);
         add_action('wp_ajax_msom_create_tables', array($this, 'ajax_create_tables'));
+        add_action('wp_ajax_msom_send_to_suppliers', array($this, 'ajax_send_to_suppliers'));
+        add_filter('woocommerce_admin_order_actions', array($this, 'add_supplier_order_action'), 10, 2);
         
         error_log('MSOM Debug: Admin class constructor called, hooks registered');
     }
@@ -698,6 +700,65 @@ class MSOM_Admin {
             
             $message = implode('; ', $errors);
             wp_send_json_error(array('message' => $message));
+        }
+    }
+    
+    public function add_supplier_order_action($actions, $order) {
+        if (!$this->order_has_suppliers($order)) {
+            return $actions;
+        }
+        
+        $actions['send_to_suppliers'] = array(
+            'url'    => wp_nonce_url(admin_url('admin-ajax.php?action=msom_send_to_suppliers&order_id=' . $order->get_id()), 'msom_send_to_suppliers'),
+            'name'   => __('Send to supplier(s)', 'multi-supplier-order-manager'),
+            'action' => 'send_to_suppliers',
+        );
+        
+        return $actions;
+    }
+    
+    private function order_has_suppliers($order) {
+        $supplier_manager = new MSOM_Supplier_Manager();
+        $order_items = $order->get_items();
+        $suppliers_data = $supplier_manager->get_suppliers_for_order_items($order_items);
+        
+        return !empty($suppliers_data);
+    }
+    
+    public function ajax_send_to_suppliers() {
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die(__('You do not have sufficient permissions to perform this action.', 'multi-supplier-order-manager'));
+        }
+        
+        if (!wp_verify_nonce($_GET['_wpnonce'], 'msom_send_to_suppliers')) {
+            wp_die(__('Security check failed. Please refresh the page and try again.', 'multi-supplier-order-manager'));
+        }
+        
+        $order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
+        
+        if (!$order_id) {
+            wp_die(__('Invalid order ID.', 'multi-supplier-order-manager'));
+        }
+        
+        $order = wc_get_order($order_id);
+        
+        if (!$order) {
+            wp_die(__('Order not found.', 'multi-supplier-order-manager'));
+        }
+        
+        $order_processor = new MSOM_Order_Processor();
+        $result = $order_processor->process_multi_supplier_order($order_id);
+        
+        if ($result) {
+            $order->add_order_note(__('Supplier emails sent manually via admin action.', 'multi-supplier-order-manager'));
+            
+            wp_redirect(add_query_arg(array(
+                'page' => 'wc-orders',
+                'msom_message' => 'suppliers_notified'
+            ), admin_url('admin.php')));
+            exit;
+        } else {
+            wp_die(__('Failed to send emails to suppliers. Please check the error logs.', 'multi-supplier-order-manager'));
         }
     }
 }
