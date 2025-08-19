@@ -96,8 +96,10 @@ class MultiSupplierOrderManager {
             wp_die(__('Multi-Supplier Order Manager requires WooCommerce to be installed and active.', 'multi-supplier-order-manager'));
         }
         
+        error_log('MSOM: Plugin activation started');
         $this->create_tables();
         $this->set_default_options();
+        error_log('MSOM: Plugin activation completed');
     }
     
     public function deactivate() {
@@ -108,8 +110,11 @@ class MultiSupplierOrderManager {
         global $wpdb;
         
         $table_name = $wpdb->prefix . 'msom_suppliers';
+        $product_supplier_table = $wpdb->prefix . 'msom_product_suppliers';
         
         $charset_collate = $wpdb->get_charset_collate();
+        
+        error_log('MSOM: Starting table creation process...');
         
         $sql = "CREATE TABLE $table_name (
             id mediumint(9) NOT NULL AUTO_INCREMENT,
@@ -126,9 +131,25 @@ class MultiSupplierOrderManager {
         ) $charset_collate;";
         
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        dbDelta($sql);
+        $result1 = dbDelta($sql);
         
-        $product_supplier_table = $wpdb->prefix . 'msom_product_suppliers';
+        if (empty($result1)) {
+            error_log('MSOM: dbDelta returned empty result for suppliers table');
+        } else {
+            error_log('MSOM: Suppliers table dbDelta result: ' . print_r($result1, true));
+        }
+        
+        $suppliers_table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name;
+        if (!$suppliers_table_exists) {
+            error_log('MSOM: Suppliers table not created by dbDelta, trying direct SQL...');
+            $direct_result = $wpdb->query($sql);
+            if ($direct_result === false) {
+                error_log('MSOM: Direct SQL failed for suppliers table. Error: ' . $wpdb->last_error);
+            } else {
+                error_log('MSOM: Direct SQL succeeded for suppliers table');
+                $suppliers_table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name;
+            }
+        }
         
         $sql2 = "CREATE TABLE $product_supplier_table (
             id mediumint(9) NOT NULL AUTO_INCREMENT,
@@ -140,7 +161,39 @@ class MultiSupplierOrderManager {
             KEY supplier_id (supplier_id)
         ) $charset_collate;";
         
-        dbDelta($sql2);
+        $result2 = dbDelta($sql2);
+        
+        if (empty($result2)) {
+            error_log('MSOM: dbDelta returned empty result for product_suppliers table');
+        } else {
+            error_log('MSOM: Product suppliers table dbDelta result: ' . print_r($result2, true));
+        }
+        
+        $product_suppliers_table_exists = $wpdb->get_var("SHOW TABLES LIKE '$product_supplier_table'") == $product_supplier_table;
+        if (!$product_suppliers_table_exists) {
+            error_log('MSOM: Product suppliers table not created by dbDelta, trying direct SQL...');
+            $direct_result2 = $wpdb->query($sql2);
+            if ($direct_result2 === false) {
+                error_log('MSOM: Direct SQL failed for product suppliers table. Error: ' . $wpdb->last_error);
+            } else {
+                error_log('MSOM: Direct SQL succeeded for product suppliers table');
+                $product_suppliers_table_exists = $wpdb->get_var("SHOW TABLES LIKE '$product_supplier_table'") == $product_supplier_table;
+            }
+        }
+        
+        $suppliers_final_check = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name;
+        $product_suppliers_final_check = $wpdb->get_var("SHOW TABLES LIKE '$product_supplier_table'") == $product_supplier_table;
+        
+        if ($suppliers_final_check && $product_suppliers_final_check) {
+            error_log('MSOM: SUCCESS - Both tables created successfully');
+            update_option('msom_tables_created', '1');
+        } else {
+            error_log('MSOM: ERROR - Table creation failed. Suppliers: ' . ($suppliers_final_check ? 'EXISTS' : 'MISSING') . ', Product Suppliers: ' . ($product_suppliers_final_check ? 'EXISTS' : 'MISSING'));
+            update_option('msom_tables_created', '0');
+            update_option('msom_table_creation_error', 'Tables missing after activation. Check error logs.');
+        }
+        
+        error_log('MSOM: Table creation process completed. Final status - Suppliers: ' . ($suppliers_final_check ? 'EXISTS' : 'MISSING') . ', Product Suppliers: ' . ($product_suppliers_final_check ? 'EXISTS' : 'MISSING'));
     }
     
     private function set_default_options() {
