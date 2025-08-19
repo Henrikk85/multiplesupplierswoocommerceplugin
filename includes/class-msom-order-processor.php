@@ -31,10 +31,12 @@ class MSOM_Order_Processor {
             return false;
         }
         
-        if (count($suppliers_data) <= 1) {
-            error_log('MSOM: Order ' . $order_id . ' has only one supplier, skipping multi-supplier processing');
+        if (count($suppliers_data) < 1) {
+            error_log('MSOM: Order ' . $order_id . ' has no suppliers, cannot process');
             return false;
         }
+        
+        error_log('MSOM: Processing order ' . $order_id . ' with ' . count($suppliers_data) . ' supplier(s)');
         
         $this->send_supplier_emails($order, $suppliers_data);
         $this->send_transport_emails($order, $suppliers_data);
@@ -49,12 +51,17 @@ class MSOM_Order_Processor {
             $supplier = $supplier_data['supplier'];
             $items = $supplier_data['items'];
             
+            error_log('MSOM: Generating PDF for supplier ' . $supplier->name . ' (ID: ' . $supplier->id . ')');
             $pdf_path = $this->pdf_generator->generate_supplier_pdf($order, $supplier, $items);
             
             if ($pdf_path) {
-                $this->email_sender->send_supplier_email($order, $supplier, $items, $pdf_path);
+                error_log('MSOM: PDF generated successfully: ' . $pdf_path);
+                $email_result = $this->email_sender->send_supplier_email($order, $supplier, $items, $pdf_path);
+                error_log('MSOM: Email sending result for supplier ' . $supplier->name . ': ' . ($email_result ? 'SUCCESS' : 'FAILED'));
                 
                 wp_schedule_single_event(time() + 3600, 'msom_cleanup_temp_files', array($pdf_path));
+            } else {
+                error_log('MSOM: PDF generation failed for supplier ' . $supplier->name . ', skipping email');
             }
         }
     }
@@ -63,7 +70,7 @@ class MSOM_Order_Processor {
         $transport_email = get_option('msom_transport_company_email');
         
         if (empty($transport_email)) {
-            error_log('MSOM: Transport company email not configured');
+            error_log('MSOM: Transport company email not configured, skipping transport emails');
             return;
         }
         
@@ -71,12 +78,17 @@ class MSOM_Order_Processor {
             $supplier = $supplier_data['supplier'];
             $items = $supplier_data['items'];
             
+            error_log('MSOM: Generating transport PDF for supplier ' . $supplier->name);
             $pdf_path = $this->pdf_generator->generate_transport_pdf($order, $supplier, $items);
             
             if ($pdf_path) {
-                $this->email_sender->send_transport_email($order, $supplier, $items, $pdf_path);
+                error_log('MSOM: Transport PDF generated successfully: ' . $pdf_path);
+                $email_result = $this->email_sender->send_transport_email($order, $supplier, $items, $pdf_path);
+                error_log('MSOM: Transport email sending result for supplier ' . $supplier->name . ': ' . ($email_result ? 'SUCCESS' : 'FAILED'));
                 
                 wp_schedule_single_event(time() + 3600, 'msom_cleanup_temp_files', array($pdf_path));
+            } else {
+                error_log('MSOM: Transport PDF generation failed for supplier ' . $supplier->name . ', skipping email');
             }
         }
     }

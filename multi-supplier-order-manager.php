@@ -3,7 +3,7 @@
  * Plugin Name: Multi-Supplier Order Manager
  * Plugin URI: https://github.com/Henrikk85/multi-supplier-order-manager
  * Description: Automatically splits WooCommerce orders by supplier and sends separate emails with PDF attachments to suppliers and transportation companies.
- * Version: 1.0.4
+ * Version: 1.0.6
  * Author: Henrik Kriiger
  * Author URI: https://github.com/Henrikk85
  * License: GPL v2 or later
@@ -22,6 +22,14 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+error_log('MSOM Debug: Main plugin file loaded at ' . date('Y-m-d H:i:s'));
+
+if (function_exists('error_log')) {
+    error_log('MSOM Debug: error_log function exists');
+} else {
+    file_put_contents('/tmp/msom_debug.txt', 'error_log function does not exist' . PHP_EOL, FILE_APPEND);
+}
+
 if (!defined('MSOM_PLUGIN_FILE')) {
     define('MSOM_PLUGIN_FILE', __FILE__);
 }
@@ -35,7 +43,7 @@ if (!defined('MSOM_PLUGIN_URL')) {
 }
 
 if (!defined('MSOM_VERSION')) {
-    define('MSOM_VERSION', '1.0.4');
+    define('MSOM_VERSION', '1.0.6');
 }
 
 class MultiSupplierOrderManager {
@@ -54,14 +62,19 @@ class MultiSupplierOrderManager {
     }
     
     public function init() {
+        error_log('MSOM Debug: Plugin init() called');
+        
         if (!class_exists('WooCommerce')) {
+            error_log('MSOM Debug: WooCommerce not found, showing notice');
             add_action('admin_notices', array($this, 'woocommerce_missing_notice'));
             return;
         }
         
+        error_log('MSOM Debug: WooCommerce found, proceeding with initialization');
         $this->load_textdomain();
         $this->includes();
         $this->init_hooks();
+        error_log('MSOM Debug: Plugin initialization completed');
     }
     
     private function load_textdomain() {
@@ -77,6 +90,8 @@ class MultiSupplierOrderManager {
     }
     
     private function init_hooks() {
+        error_log('MSOM Debug: init_hooks() called');
+        
         register_activation_hook(MSOM_PLUGIN_FILE, array($this, 'activate'));
         register_deactivation_hook(MSOM_PLUGIN_FILE, array($this, 'deactivate'));
         
@@ -86,7 +101,11 @@ class MultiSupplierOrderManager {
         add_action('before_woocommerce_init', array($this, 'declare_hpos_compatibility'));
         
         if (is_admin()) {
+            error_log('MSOM Debug: is_admin() is true, creating MSOM_Admin instance');
             new MSOM_Admin();
+            error_log('MSOM Debug: MSOM_Admin instance created');
+        } else {
+            error_log('MSOM Debug: is_admin() is false, not creating admin instance');
         }
     }
     

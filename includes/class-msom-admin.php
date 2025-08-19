@@ -4,6 +4,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+error_log('MSOM Debug: Admin class file loaded');
+
 class MSOM_Admin {
     
     public function __construct() {
@@ -16,6 +18,7 @@ class MSOM_Admin {
         add_action('wp_ajax_msom_create_tables', array($this, 'ajax_create_tables'));
         add_action('wp_ajax_msom_send_to_suppliers', array($this, 'ajax_send_to_suppliers'));
         add_filter('woocommerce_admin_order_actions', array($this, 'add_supplier_order_action'), 10, 2);
+        add_action('admin_head', array($this, 'add_custom_order_action_styles'));
         
         error_log('MSOM Debug: Admin class constructor called, hooks registered');
     }
@@ -704,14 +707,20 @@ class MSOM_Admin {
     }
     
     public function add_supplier_order_action($actions, $order) {
+        error_log('MSOM Debug: add_supplier_order_action called for order ' . $order->get_id());
+        
         if (!$this->order_has_suppliers($order)) {
+            error_log('MSOM Debug: Order ' . $order->get_id() . ' has no suppliers, not adding action');
             return $actions;
         }
+        
+        error_log('MSOM Debug: Order ' . $order->get_id() . ' has suppliers, adding send_to_suppliers action');
         
         $actions['send_to_suppliers'] = array(
             'url'    => wp_nonce_url(admin_url('admin-ajax.php?action=msom_send_to_suppliers&order_id=' . $order->get_id()), 'msom_send_to_suppliers'),
             'name'   => __('Send to supplier(s)', 'multi-supplier-order-manager'),
             'action' => 'send_to_suppliers',
+            'title'  => __('Send order details to assigned suppliers', 'multi-supplier-order-manager'),
         );
         
         return $actions;
@@ -720,9 +729,42 @@ class MSOM_Admin {
     private function order_has_suppliers($order) {
         $supplier_manager = new MSOM_Supplier_Manager();
         $order_items = $order->get_items();
+        
+        error_log('MSOM Debug: Checking suppliers for order ' . $order->get_id() . ' with ' . count($order_items) . ' items');
+        
+        foreach ($order_items as $item) {
+            error_log('MSOM Debug: Item product_id=' . $item->get_product_id() . ', variation_id=' . $item->get_variation_id());
+        }
+        
         $suppliers_data = $supplier_manager->get_suppliers_for_order_items($order_items);
         
+        error_log('MSOM Debug: Found ' . count($suppliers_data) . ' suppliers for order ' . $order->get_id());
+        
         return !empty($suppliers_data);
+    }
+    
+    public function add_custom_order_action_styles() {
+        $screen = get_current_screen();
+        if ($screen && ($screen->id === 'woocommerce_page_wc-orders' || $screen->id === 'edit-shop_order')) {
+            echo '<style>
+                .wc-action-button-send_to_suppliers {
+                    background-color: #f8f9fa !important;
+                    color: #6c757d !important;
+                    border: 1px dashed #dee2e6 !important;
+                    font-style: italic !important;
+                    opacity: 0.8 !important;
+                }
+                .wc-action-button-send_to_suppliers:hover {
+                    background-color: #e9ecef !important;
+                    color: #495057 !important;
+                    opacity: 1 !important;
+                }
+                .wc-action-button-send_to_suppliers:before {
+                    content: "📧 ";
+                    margin-right: 4px;
+                }
+            </style>';
+        }
     }
     
     public function ajax_send_to_suppliers() {
@@ -746,6 +788,8 @@ class MSOM_Admin {
             wp_die(__('Order not found.', 'multi-supplier-order-manager'));
         }
         
+        error_log('MSOM Debug: Processing order ' . $order_id . ' for supplier emails');
+        
         $order_processor = new MSOM_Order_Processor();
         $result = $order_processor->process_multi_supplier_order($order_id);
         
@@ -758,6 +802,7 @@ class MSOM_Admin {
             ), admin_url('admin.php')));
             exit;
         } else {
+            error_log('MSOM Debug: Failed to process order ' . $order_id . ' - check order processor logs');
             wp_die(__('Failed to send emails to suppliers. Please check the error logs.', 'multi-supplier-order-manager'));
         }
     }

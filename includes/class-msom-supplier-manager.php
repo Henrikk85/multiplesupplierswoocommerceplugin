@@ -155,11 +155,15 @@ class MSOM_Supplier_Manager {
         
         $suppliers_data = array();
         
+        error_log('MSOM Debug: get_suppliers_for_order_items called with ' . count($order_items) . ' items');
+        
         foreach ($order_items as $item) {
             $product_id = $item->get_product_id();
             $variation_id = $item->get_variation_id();
             
             $check_id = $variation_id ? $variation_id : $product_id;
+            
+            error_log('MSOM Debug: Checking suppliers for product_id=' . $product_id . ', variation_id=' . $variation_id . ', check_id=' . $check_id);
             
             $suppliers = $wpdb->get_results($wpdb->prepare(
                 "SELECT s.* FROM $suppliers_table s 
@@ -168,7 +172,10 @@ class MSOM_Supplier_Manager {
                 $check_id
             ));
             
+            error_log('MSOM Debug: Found ' . count($suppliers) . ' suppliers for product ' . $check_id);
+            
             foreach ($suppliers as $supplier) {
+                error_log('MSOM Debug: Adding supplier ' . $supplier->name . ' (ID: ' . $supplier->id . ')');
                 if (!isset($suppliers_data[$supplier->id])) {
                     $suppliers_data[$supplier->id] = array(
                         'supplier' => $supplier,
@@ -179,6 +186,7 @@ class MSOM_Supplier_Manager {
             }
         }
         
+        error_log('MSOM Debug: Returning ' . count($suppliers_data) . ' suppliers total');
         return $suppliers_data;
     }
 }

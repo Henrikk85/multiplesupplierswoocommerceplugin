@@ -271,20 +271,8 @@ class MSOM_PDF_Generator {
     }
     
     private function generate_pdf_fallback($html, $file_path) {
-        $html_file = str_replace('.pdf', '.html', $file_path);
-        file_put_contents($html_file, $html);
-        
-        if (function_exists('exec')) {
-            $command = "wkhtmltopdf '$html_file' '$file_path' 2>&1";
-            exec($command, $output, $return_var);
-            
-            if ($return_var === 0 && file_exists($file_path)) {
-                unlink($html_file);
-                return true;
-            }
-        }
-        
-        error_log('MSOM: No PDF generation method available. HTML file saved instead: ' . $html_file);
+        error_log('MSOM: PDF generation failed - no PDF libraries available (TCPDF, mPDF, wkhtmltopdf)');
+        error_log('MSOM: Emails will not be sent as per user requirements when PDF generation fails');
         return false;
     }
 }
