@@ -276,18 +276,31 @@ class MSOM_Admin {
         
         $supplier_manager = new MSOM_Supplier_Manager();
         $suppliers = $supplier_manager->get_all_suppliers();
-        $current_supplier = $supplier_manager->get_product_supplier($post->ID);
+        $current_suppliers = $supplier_manager->get_product_suppliers($post->ID);
+        $current_supplier_ids = array();
         
-        echo '<label for="msom_supplier_id">' . __('Select Supplier:', 'multi-supplier-order-manager') . '</label>';
-        echo '<select name="msom_supplier_id" id="msom_supplier_id" style="width: 100%; margin-top: 5px;">';
-        echo '<option value="">' . __('No Supplier', 'multi-supplier-order-manager') . '</option>';
-        
-        foreach ($suppliers as $supplier) {
-            $selected = ($current_supplier && $current_supplier->supplier_id == $supplier->id) ? 'selected' : '';
-            echo '<option value="' . $supplier->id . '" ' . $selected . '>' . esc_html($supplier->name) . '</option>';
+        if ($current_suppliers) {
+            foreach ($current_suppliers as $supplier_assignment) {
+                $current_supplier_ids[] = $supplier_assignment->supplier_id;
+            }
         }
         
-        echo '</select>';
+        echo '<label>' . __('Select Suppliers:', 'multi-supplier-order-manager') . '</label>';
+        echo '<div style="margin-top: 10px; max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px;">';
+        
+        foreach ($suppliers as $supplier) {
+            $checked = in_array($supplier->id, $current_supplier_ids) ? 'checked' : '';
+            echo '<label style="display: block; margin-bottom: 5px;">';
+            echo '<input type="checkbox" name="msom_supplier_ids[]" value="' . $supplier->id . '" ' . $checked . ' style="margin-right: 5px;">';
+            echo esc_html($supplier->name);
+            echo '</label>';
+        }
+        
+        if (empty($suppliers)) {
+            echo '<p style="color: #666; font-style: italic;">' . __('No suppliers available. Please add suppliers first.', 'multi-supplier-order-manager') . '</p>';
+        }
+        
+        echo '</div>';
     }
     
     public function save_product_supplier($post_id) {
@@ -308,12 +321,8 @@ class MSOM_Admin {
         }
         
         $supplier_manager = new MSOM_Supplier_Manager();
-        $supplier_id = isset($_POST['msom_supplier_id']) ? intval($_POST['msom_supplier_id']) : 0;
+        $supplier_ids = isset($_POST['msom_supplier_ids']) ? array_map('intval', $_POST['msom_supplier_ids']) : array();
         
-        if ($supplier_id > 0) {
-            $supplier_manager->assign_product_to_supplier($post_id, $supplier_id);
-        } else {
-            $supplier_manager->remove_product_from_supplier($post_id);
-        }
+        $supplier_manager->assign_product_to_suppliers($post_id, $supplier_ids);
     }
 }

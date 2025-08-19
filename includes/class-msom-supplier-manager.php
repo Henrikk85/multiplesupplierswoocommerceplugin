@@ -79,33 +79,47 @@ class MSOM_Supplier_Manager {
         return $wpdb->delete($table_name, array('id' => $supplier_id), array('%d'));
     }
     
-    public function assign_product_to_supplier($product_id, $supplier_id) {
+    public function assign_product_to_suppliers($product_id, $supplier_ids) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'msom_product_suppliers';
         
-        $existing = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $table_name WHERE product_id = %d",
-            $product_id
-        ));
+        $wpdb->delete($table_name, array('product_id' => $product_id), array('%d'));
         
-        if ($existing) {
-            return $wpdb->update(
-                $table_name,
-                array('supplier_id' => $supplier_id),
-                array('product_id' => $product_id),
-                array('%d'),
-                array('%d')
-            );
-        } else {
-            return $wpdb->insert(
-                $table_name,
-                array(
-                    'product_id' => $product_id,
-                    'supplier_id' => $supplier_id
-                ),
-                array('%d', '%d')
-            );
+        if (empty($supplier_ids)) {
+            return true;
         }
+        
+        $success = true;
+        foreach ($supplier_ids as $supplier_id) {
+            if (empty($supplier_id)) continue;
+            
+            $existing = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $table_name WHERE product_id = %d AND supplier_id = %d",
+                $product_id, $supplier_id
+            ));
+            
+            if (!$existing) {
+                $result = $wpdb->insert(
+                    $table_name,
+                    array(
+                        'product_id' => $product_id,
+                        'supplier_id' => $supplier_id
+                    ),
+                    array('%d', '%d')
+                );
+                
+                if ($result === false) {
+                    $success = false;
+                    error_log('MSOM: Failed to assign product to supplier. Error: ' . $wpdb->last_error);
+                }
+            }
+        }
+        
+        return $success;
+    }
+    
+    public function assign_product_to_supplier($product_id, $supplier_id) {
+        return $this->assign_product_to_suppliers($product_id, array($supplier_id));
     }
     
     public function remove_product_from_supplier($product_id) {
@@ -115,14 +129,19 @@ class MSOM_Supplier_Manager {
         return $wpdb->delete($table_name, array('product_id' => $product_id), array('%d'));
     }
     
-    public function get_product_supplier($product_id) {
+    public function get_product_suppliers($product_id) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'msom_product_suppliers';
         
-        return $wpdb->get_row($wpdb->prepare(
+        return $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM $table_name WHERE product_id = %d",
             $product_id
         ));
+    }
+    
+    public function get_product_supplier($product_id) {
+        $suppliers = $this->get_product_suppliers($product_id);
+        return !empty($suppliers) ? $suppliers[0] : null;
     }
     
     public function get_suppliers_for_order_items($order_items) {
@@ -138,14 +157,14 @@ class MSOM_Supplier_Manager {
             
             $check_id = $variation_id ? $variation_id : $product_id;
             
-            $supplier = $wpdb->get_row($wpdb->prepare(
+            $suppliers = $wpdb->get_results($wpdb->prepare(
                 "SELECT s.* FROM $suppliers_table s 
                  INNER JOIN $product_suppliers_table ps ON s.id = ps.supplier_id 
                  WHERE ps.product_id = %d",
                 $check_id
             ));
             
-            if ($supplier) {
+            foreach ($suppliers as $supplier) {
                 if (!isset($suppliers_data[$supplier->id])) {
                     $suppliers_data[$supplier->id] = array(
                         'supplier' => $supplier,

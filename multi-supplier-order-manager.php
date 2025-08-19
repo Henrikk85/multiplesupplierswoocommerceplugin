@@ -3,7 +3,7 @@
  * Plugin Name: Multi-Supplier Order Manager
  * Plugin URI: https://github.com/Henrikk85/multi-supplier-order-manager
  * Description: Automatically splits WooCommerce orders by supplier and sends separate emails with PDF attachments to suppliers and transportation companies.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: Henrik Kriiger
  * Author URI: https://github.com/Henrikk85
  * License: GPL v2 or later
@@ -35,7 +35,7 @@ if (!defined('MSOM_PLUGIN_URL')) {
 }
 
 if (!defined('MSOM_VERSION')) {
-    define('MSOM_VERSION', '1.0.1');
+    define('MSOM_VERSION', '1.0.2');
 }
 
 class MultiSupplierOrderManager {
@@ -136,7 +136,7 @@ class MultiSupplierOrderManager {
             supplier_id mediumint(9) NOT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
-            UNIQUE KEY product_supplier (product_id, supplier_id),
+            KEY product_id (product_id),
             KEY supplier_id (supplier_id)
         ) $charset_collate;";
         
