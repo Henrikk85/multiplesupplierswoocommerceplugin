@@ -3,7 +3,7 @@
  * Plugin Name: Multi-Supplier Order Manager
  * Plugin URI: https://github.com/Henrikk85/multi-supplier-order-manager
  * Description: Automatically splits WooCommerce orders by supplier and sends separate emails with PDF attachments to suppliers and transportation companies.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Henrik Kriiger
  * Author URI: https://github.com/Henrikk85
  * License: GPL v2 or later
@@ -15,6 +15,7 @@
  * Requires PHP: 7.4
  * WC requires at least: 5.0
  * WC tested up to: 8.0
+ * Woo: 8.0.0
  */
 
 if (!defined('ABSPATH')) {
@@ -34,7 +35,7 @@ if (!defined('MSOM_PLUGIN_URL')) {
 }
 
 if (!defined('MSOM_VERSION')) {
-    define('MSOM_VERSION', '1.0.0');
+    define('MSOM_VERSION', '1.0.1');
 }
 
 class MultiSupplierOrderManager {
@@ -81,6 +82,8 @@ class MultiSupplierOrderManager {
         
         add_action('woocommerce_order_status_processing', array($this, 'process_order'), 10, 1);
         add_action('woocommerce_order_status_completed', array($this, 'process_order'), 10, 1);
+        
+        add_action('before_woocommerce_init', array($this, 'declare_hpos_compatibility'));
         
         if (is_admin()) {
             new MSOM_Admin();
@@ -133,7 +136,7 @@ class MultiSupplierOrderManager {
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             UNIQUE KEY product_supplier (product_id, supplier_id),
-            FOREIGN KEY (supplier_id) REFERENCES $table_name(id) ON DELETE CASCADE
+            KEY supplier_id (supplier_id)
         ) $charset_collate;";
         
         dbDelta($sql2);
@@ -152,6 +155,12 @@ class MultiSupplierOrderManager {
     public function process_order($order_id) {
         $order_processor = new MSOM_Order_Processor();
         $order_processor->process_multi_supplier_order($order_id);
+    }
+    
+    public function declare_hpos_compatibility() {
+        if (class_exists('\Automattic\WooCommerce\Utilities\FeaturesUtil')) {
+            \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('custom_order_tables', MSOM_PLUGIN_FILE, true);
+        }
     }
     
     public function woocommerce_missing_notice() {

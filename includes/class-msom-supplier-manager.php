@@ -22,7 +22,7 @@ class MSOM_Supplier_Manager {
         global $wpdb;
         $table_name = $wpdb->prefix . 'msom_suppliers';
         
-        return $wpdb->insert(
+        $result = $wpdb->insert(
             $table_name,
             array(
                 'name' => sanitize_text_field($data['name']),
@@ -33,6 +33,12 @@ class MSOM_Supplier_Manager {
             ),
             array('%s', '%s', '%s', '%s', '%s')
         );
+        
+        if ($result === false) {
+            error_log('MSOM: Failed to add supplier. Error: ' . $wpdb->last_error);
+        }
+        
+        return $result;
     }
     
     public function delete_supplier($supplier_id) {
