@@ -118,6 +118,7 @@ class MultiSupplierOrderManager {
             contact_person varchar(255),
             phone varchar(50),
             address text,
+            additional_instructions text,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),

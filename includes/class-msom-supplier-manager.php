@@ -29,9 +29,10 @@ class MSOM_Supplier_Manager {
                 'email' => sanitize_email($data['email']),
                 'contact_person' => sanitize_text_field($data['contact_person']),
                 'phone' => sanitize_text_field($data['phone']),
-                'address' => sanitize_textarea_field($data['address'])
+                'address' => sanitize_textarea_field($data['address']),
+                'additional_instructions' => sanitize_textarea_field($data['additional_instructions'])
             ),
-            array('%s', '%s', '%s', '%s', '%s')
+            array('%s', '%s', '%s', '%s', '%s', '%s')
         );
         
         if ($result === false) {

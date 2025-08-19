@@ -94,6 +94,10 @@ class MSOM_Admin {
                         <th scope="row"><?php _e('Address', 'multi-supplier-order-manager'); ?></th>
                         <td><textarea name="address" rows="3" class="large-text"></textarea></td>
                     </tr>
+                    <tr>
+                        <th scope="row"><?php _e('Additional Instructions', 'multi-supplier-order-manager'); ?></th>
+                        <td><textarea name="additional_instructions" rows="3" class="large-text" placeholder="<?php _e('Special instructions for this supplier...', 'multi-supplier-order-manager'); ?>"></textarea></td>
+                    </tr>
                 </table>
                 <?php submit_button(__('Add Supplier', 'multi-supplier-order-manager')); ?>
             </form>
@@ -106,13 +110,14 @@ class MSOM_Admin {
                         <th><?php _e('Email', 'multi-supplier-order-manager'); ?></th>
                         <th><?php _e('Contact Person', 'multi-supplier-order-manager'); ?></th>
                         <th><?php _e('Phone', 'multi-supplier-order-manager'); ?></th>
+                        <th><?php _e('Instructions', 'multi-supplier-order-manager'); ?></th>
                         <th><?php _e('Actions', 'multi-supplier-order-manager'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($suppliers)): ?>
                         <tr>
-                            <td colspan="5"><?php _e('No suppliers found.', 'multi-supplier-order-manager'); ?></td>
+                            <td colspan="6"><?php _e('No suppliers found.', 'multi-supplier-order-manager'); ?></td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($suppliers as $supplier): ?>
@@ -121,6 +126,7 @@ class MSOM_Admin {
                                 <td><?php echo esc_html($supplier->email); ?></td>
                                 <td><?php echo esc_html($supplier->contact_person); ?></td>
                                 <td><?php echo esc_html($supplier->phone); ?></td>
+                                <td><?php echo esc_html(substr($supplier->additional_instructions ?? '', 0, 50)) . (strlen($supplier->additional_instructions ?? '') > 50 ? '...' : ''); ?></td>
                                 <td>
                                     <form method="post" style="display: inline;">
                                         <?php wp_nonce_field('msom_delete_supplier', 'msom_nonce'); ?>
