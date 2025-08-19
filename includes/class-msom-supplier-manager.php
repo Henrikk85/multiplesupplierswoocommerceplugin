@@ -42,6 +42,33 @@ class MSOM_Supplier_Manager {
         return $result;
     }
     
+    public function update_supplier($supplier_id, $data) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'msom_suppliers';
+        
+        $result = $wpdb->update(
+            $table_name,
+            array(
+                'name' => sanitize_text_field($data['name']),
+                'email' => sanitize_email($data['email']),
+                'contact_person' => sanitize_text_field($data['contact_person']),
+                'phone' => sanitize_text_field($data['phone']),
+                'address' => sanitize_textarea_field($data['address']),
+                'additional_instructions' => sanitize_textarea_field($data['additional_instructions'])
+            ),
+            array('id' => $supplier_id),
+            array('%s', '%s', '%s', '%s', '%s', '%s'),
+            array('%d')
+        );
+        
+        if ($result === false) {
+            error_log('MSOM: Failed to update supplier. Error: ' . $wpdb->last_error);
+            return false;
+        }
+        
+        return $result;
+    }
+    
     public function delete_supplier($supplier_id) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'msom_suppliers';

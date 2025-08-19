@@ -54,6 +54,13 @@ class MSOM_Admin {
                 } else {
                     echo '<div class="notice notice-error"><p>' . __('Error adding supplier.', 'multi-supplier-order-manager') . '</p></div>';
                 }
+            } elseif ($_POST['action'] === 'update_supplier' && wp_verify_nonce($_POST['msom_nonce'], 'msom_update_supplier')) {
+                $result = $supplier_manager->update_supplier($_POST['supplier_id'], $_POST);
+                if ($result !== false) {
+                    echo '<div class="notice notice-success"><p>' . __('Supplier updated successfully.', 'multi-supplier-order-manager') . '</p></div>';
+                } else {
+                    echo '<div class="notice notice-error"><p>' . __('Error updating supplier.', 'multi-supplier-order-manager') . '</p></div>';
+                }
             } elseif ($_POST['action'] === 'delete_supplier' && wp_verify_nonce($_POST['msom_nonce'], 'msom_delete_supplier')) {
                 $result = $supplier_manager->delete_supplier($_POST['supplier_id']);
                 if ($result) {
@@ -65,11 +72,52 @@ class MSOM_Admin {
         }
         
         $suppliers = $supplier_manager->get_all_suppliers();
+        $edit_supplier = null;
+        
+        if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['supplier_id'])) {
+            $edit_supplier = $supplier_manager->get_supplier($_GET['supplier_id']);
+        }
         ?>
         <div class="wrap">
             <h1><?php _e('Supplier Management', 'multi-supplier-order-manager'); ?></h1>
             
-            <h2><?php _e('Add New Supplier', 'multi-supplier-order-manager'); ?></h2>
+            <?php if ($edit_supplier): ?>
+                <h2><?php _e('Edit Supplier', 'multi-supplier-order-manager'); ?></h2>
+                <form method="post" action="">
+                    <?php wp_nonce_field('msom_update_supplier', 'msom_nonce'); ?>
+                    <input type="hidden" name="action" value="update_supplier">
+                    <input type="hidden" name="supplier_id" value="<?php echo $edit_supplier->id; ?>">
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><?php _e('Supplier Name', 'multi-supplier-order-manager'); ?></th>
+                            <td><input type="text" name="name" value="<?php echo esc_attr($edit_supplier->name); ?>" required class="regular-text"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Email', 'multi-supplier-order-manager'); ?></th>
+                            <td><input type="email" name="email" value="<?php echo esc_attr($edit_supplier->email); ?>" required class="regular-text"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Contact Person', 'multi-supplier-order-manager'); ?></th>
+                            <td><input type="text" name="contact_person" value="<?php echo esc_attr($edit_supplier->contact_person); ?>" class="regular-text"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Phone', 'multi-supplier-order-manager'); ?></th>
+                            <td><input type="text" name="phone" value="<?php echo esc_attr($edit_supplier->phone); ?>" class="regular-text"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Address', 'multi-supplier-order-manager'); ?></th>
+                            <td><textarea name="address" rows="3" class="large-text"><?php echo esc_textarea($edit_supplier->address); ?></textarea></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Additional Instructions', 'multi-supplier-order-manager'); ?></th>
+                            <td><textarea name="additional_instructions" rows="3" class="large-text" placeholder="<?php _e('Special instructions for this supplier...', 'multi-supplier-order-manager'); ?>"><?php echo esc_textarea($edit_supplier->additional_instructions); ?></textarea></td>
+                        </tr>
+                    </table>
+                    <?php submit_button(__('Update Supplier', 'multi-supplier-order-manager')); ?>
+                    <a href="<?php echo admin_url('admin.php?page=msom-suppliers'); ?>" class="button button-secondary"><?php _e('Cancel', 'multi-supplier-order-manager'); ?></a>
+                </form>
+            <?php else: ?>
+                <h2><?php _e('Add New Supplier', 'multi-supplier-order-manager'); ?></h2>
             <form method="post" action="">
                 <?php wp_nonce_field('msom_add_supplier', 'msom_nonce'); ?>
                 <input type="hidden" name="action" value="add_supplier">
@@ -101,6 +149,7 @@ class MSOM_Admin {
                 </table>
                 <?php submit_button(__('Add Supplier', 'multi-supplier-order-manager')); ?>
             </form>
+            <?php endif; ?>
             
             <h2><?php _e('Existing Suppliers', 'multi-supplier-order-manager'); ?></h2>
             <table class="wp-list-table widefat fixed striped">
@@ -128,7 +177,8 @@ class MSOM_Admin {
                                 <td><?php echo esc_html($supplier->phone); ?></td>
                                 <td><?php echo esc_html(substr($supplier->additional_instructions ?? '', 0, 50)) . (strlen($supplier->additional_instructions ?? '') > 50 ? '...' : ''); ?></td>
                                 <td>
-                                    <form method="post" style="display: inline;">
+                                    <a href="<?php echo admin_url('admin.php?page=msom-suppliers&action=edit&supplier_id=' . $supplier->id); ?>" class="button button-primary"><?php _e('Edit', 'multi-supplier-order-manager'); ?></a>
+                                    <form method="post" style="display: inline; margin-left: 5px;">
                                         <?php wp_nonce_field('msom_delete_supplier', 'msom_nonce'); ?>
                                         <input type="hidden" name="action" value="delete_supplier">
                                         <input type="hidden" name="supplier_id" value="<?php echo $supplier->id; ?>">
